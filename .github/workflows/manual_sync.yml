@@ -10,8 +10,8 @@ on:
         default: false
   push:
     branches:
-      - 'feat/**'
-      - 'feat**'
+      - 'test/**'
+      - 'test**'
 
 jobs:
   build:
