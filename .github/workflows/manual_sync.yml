@@ -1,0 +1,40 @@
+name: Manual Sync & Init
+
+on:
+  workflow_dispatch:
+    inputs:
+      reset_readme:
+        description: '⚠️ README 파일을 초기화하고 다시 만들까요? (체크 시 기존 내용 삭제됨)'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+          
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run script
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          FETCH_MODE: "ALL"
+          RESET_MODE: ${{ inputs.reset_readme }}
+        run: python update_readme.py
+        
+      - name: Commit and Push
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          git add .
+          git commit -m "docs: manual sync (reset: ${{ inputs.reset_readme }})" || exit 0
+          git push
