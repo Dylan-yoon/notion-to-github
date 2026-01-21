@@ -7,23 +7,23 @@ from datetime import datetime, timezone, timedelta
 # [사용자 설정 영역]
 # =======================================================
 
-# 노션에 정리된 데이터베이스의 페이지가 저장될 최상위 폴더 
 SAVE_DIR_ROOT = "TIL" 
-
-# 노션 데이터베이스의 제목 컬럼
 NOTION_PROPERTY_TITLE = "제목"
-
-# 노션 데이터베이스의 날짜 컬럼
 NOTION_PROPERTY_DATE = "날짜"
-
-README_FILE = "README.md"        # 최상위 Readme 이름
-
+README_FILE = "README.md"
 MARKER_START = ""
 MARKER_END = ""
-
-# 한국시간 기준 설정을 위한 Timezone_Hours
 TIMEZONE_HOURS = 9 
 
+# 초기화 모드일 때 사용될 기본 템플릿
+DEFAULT_README_TEMPLATE = f"""# 📝 My TIL Collection
+
+노션에서 작성된 TIL(Today I Learned)이 자동으로 업로드되는 저장소입니다.
+
+## 📚 글 목록
+{MARKER_START}
+{MARKER_END}
+"""
 
 # =======================================================
 # [시스템 설정]
@@ -89,7 +89,7 @@ def sanitize_filename(title):
 def save_as_markdown(page, date_str):
     if len(date_str) > 10:
         date_str = date_str[:10]
-        
+
     page_id = page['id']
     try:
         title = page['properties'][NOTION_PROPERTY_TITLE]['title'][0]['text']['content']
@@ -120,7 +120,7 @@ def save_as_markdown(page, date_str):
     
     return title, filename
 
-def update_main_readme_by_scanning():
+def update_main_readme_by_scanning(reset_mode):
     if not os.path.exists(SAVE_DIR_ROOT):
         return
 
@@ -168,9 +168,13 @@ def update_main_readme_by_scanning():
                 new_content += f"- [{item['date_str']} : {item['title']}](./{safe_path})\n"
             new_content += "\n</details>\n\n"
 
-    if not os.path.exists(README_FILE):
-        return
+    # RESET 모드이거나 파일이 없으면 템플릿으로 덮어쓰기
+    if reset_mode == 'true' or not os.path.exists(README_FILE):
+        print(f">> [INFO] README.md를 초기화합니다. (RESET_MODE: {reset_mode})")
+        with open(README_FILE, "w", encoding="utf-8") as f:
+            f.write(DEFAULT_README_TEMPLATE)
 
+    # 기존 읽기
     with open(README_FILE, "r", encoding="utf-8") as f:
         readme_text = f.read()
 
@@ -178,8 +182,10 @@ def update_main_readme_by_scanning():
     end_idx = readme_text.find(MARKER_END)
 
     if start_idx == -1 or end_idx == -1:
+        # 마커가 없으면(혹은 깨졌으면) 그냥 뒤에 추가
         final_content = readme_text + f"\n\n{MARKER_START}\n{new_content}{MARKER_END}"
     else:
+        # 마커 사이 교체
         final_content = (
             readme_text[:start_idx + len(MARKER_START)] + 
             "\n" + new_content + 
@@ -191,6 +197,7 @@ def update_main_readme_by_scanning():
 
 def main():
     fetch_mode = os.environ.get('FETCH_MODE', 'DAILY')
+    reset_mode = os.environ.get('RESET_MODE', 'false').lower() # 문자열 'true'/'false' 처리
     
     url = f"https://api.notion.com/v1/databases/{DATABASE_ID}/query"
     payload = {}
@@ -201,12 +208,9 @@ def main():
         kst = timezone(timedelta(hours=TIMEZONE_HOURS))
         target_date = (datetime.now(kst) - timedelta(days=1)).strftime("%Y-%m-%d")
         print(f">> [모드: 일간] {target_date} 데이터를 조회합니다.")
-        
         payload["filter"] = {
             "property": NOTION_PROPERTY_DATE,
-            "date": {
-                "equals": target_date 
-            }
+            "date": { "equals": target_date }
         }
 
     has_more = True
@@ -218,7 +222,6 @@ def main():
             
         res = requests.post(url, headers=headers, json=payload)
         data = res.json()
-        
         pages = data.get('results', [])
         
         for page in pages:
@@ -226,7 +229,6 @@ def main():
                 props = page['properties']
                 if not props[NOTION_PROPERTY_DATE]['date']:
                     continue
-                    
                 page_date = props[NOTION_PROPERTY_DATE]['date']['start']
             except KeyError:
                 continue
@@ -237,7 +239,7 @@ def main():
         has_more = data.get('has_more', False)
         next_cursor = data.get('next_cursor')
 
-    update_main_readme_by_scanning()
+    update_main_readme_by_scanning(reset_mode)
 
 if __name__ == "__main__":
     main()
