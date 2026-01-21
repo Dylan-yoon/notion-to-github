@@ -11,17 +11,15 @@ from datetime import datetime, timezone, timedelta
 SAVE_DIR_ROOT = "TIL" 
 
 # 노션 데이터베이스의 제목 컬럼
-# DataBase 네이밍 변경하지 않는 이상 바꾸시면 안됩니다.
 NOTION_PROPERTY_TITLE = "제목"
 
 # 노션 데이터베이스의 날짜 컬럼
-# DataBase 네이밍 변경하지 않는 이상 바꾸시면 안됩니다.
 NOTION_PROPERTY_DATE = "날짜"
 
 README_FILE = "README.md"        # 최상위 Readme 이름
 
-MARKER_START = "<!-- Daily Link Start -->"
-MARKER_END = "<!-- Daily Link End -->"
+MARKER_START = ""
+MARKER_END = ""
 
 # 한국시간 기준 설정을 위한 Timezone_Hours
 TIMEZONE_HOURS = 9 
@@ -176,11 +174,9 @@ def update_main_readme_by_scanning():
     start_idx = readme_text.find(MARKER_START)
     end_idx = readme_text.find(MARKER_END)
 
-    # 마커가 없으면 파일 끝에 추가 (안전장치)
     if start_idx == -1 or end_idx == -1:
         final_content = readme_text + f"\n\n{MARKER_START}\n{new_content}{MARKER_END}"
     else:
-        # 기존 마커 사이의 내용을 싹 지우고, 새로 만든 리스트(new_content)로 갈아끼움
         final_content = (
             readme_text[:start_idx + len(MARKER_START)] + 
             "\n" + new_content + 
@@ -191,28 +187,53 @@ def update_main_readme_by_scanning():
         f.write(final_content)
 
 def main():
-    kst = timezone(timedelta(hours=TIMEZONE_HOURS))
-    target_date = (datetime.now(kst) - timedelta(days=1)).strftime("%Y-%m-%d")
-    print(f"DEBUG: {target_date} (어제) 일자 글 조회 시작")
-
+    fetch_mode = os.environ.get('FETCH_MODE', 'DAILY')
+    
     url = f"https://api.notion.com/v1/databases/{DATABASE_ID}/query"
-    payload = {
-        "filter": {
+    payload = {}
+
+    if fetch_mode == "ALL":
+        print(">> [모드: 전체] 모든 데이터를 조회합니다.")
+    else:
+        kst = timezone(timedelta(hours=TIMEZONE_HOURS))
+        target_date = (datetime.now(kst) - timedelta(days=1)).strftime("%Y-%m-%d")
+        print(f">> [모드: 일간] {target_date} 데이터를 조회합니다.")
+        
+        payload["filter"] = {
             "property": NOTION_PROPERTY_DATE,
             "date": {
-                "equals": target_date  # 여기가 today에서 target_date로 바뀜!
+                "equals": target_date 
             }
         }
-    }
 
-    res = requests.post(url, headers=headers, json=payload)
-    pages = res.json().get('results', [])
+    has_more = True
+    next_cursor = None
     
-    if pages:
+    while has_more:
+        if next_cursor:
+            payload['start_cursor'] = next_cursor
+            
+        res = requests.post(url, headers=headers, json=payload)
+        data = res.json()
+        
+        pages = data.get('results', [])
+        
         for page in pages:
-            title, filepath = save_as_markdown(page, today)
-            print(f"DEBUG: 저장 완료 - {filepath}")
-    
+            try:
+                props = page['properties']
+                if not props[NOTION_PROPERTY_DATE]['date']:
+                    continue
+                    
+                page_date = props[NOTION_PROPERTY_DATE]['date']['start']
+            except KeyError:
+                continue
+
+            title, filepath = save_as_markdown(page, page_date)
+            print(f"DEBUG: 저장 완료 - {page_date} : {title}")
+        
+        has_more = data.get('has_more', False)
+        next_cursor = data.get('next_cursor')
+
     update_main_readme_by_scanning()
 
 if __name__ == "__main__":
