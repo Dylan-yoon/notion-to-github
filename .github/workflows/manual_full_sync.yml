@@ -1,0 +1,33 @@
+name: Manual Full Sync Notion Log
+
+on:
+  workflow_dispatch: # 수동 실행 전용
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+          
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run script (Fetch ALL)
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          FETCH_MODE: "ALL"
+        run: python update_readme.py
+        
+      - name: Commit and Push
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          git add .
+          git commit -m "docs: full sync from notion" || exit 0
+          git push
