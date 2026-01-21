@@ -1,7 +1,13 @@
-name: Manual Full Sync Notion Log
+name: Manual Sync & Init
 
 on:
-  workflow_dispatch: # 수동 실행 전용
+  workflow_dispatch:
+    inputs:
+      reset_readme:
+        description: '⚠️ README 파일을 초기화하고 다시 만들까요? (체크 시 기존 내용 삭제됨)'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -17,11 +23,12 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Run script (Fetch ALL)
+      - name: Run script
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
           FETCH_MODE: "ALL"
+          RESET_MODE: ${{ inputs.reset_readme }}
         run: python update_readme.py
         
       - name: Commit and Push
@@ -29,5 +36,5 @@ jobs:
           git config --global user.name "GitHub Action"
           git config --global user.email "action@github.com"
           git add .
-          git commit -m "docs: full sync from notion" || exit 0
+          git commit -m "docs: manual sync (reset: ${{ inputs.reset_readme }})" || exit 0
           git push
