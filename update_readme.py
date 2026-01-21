@@ -87,6 +87,9 @@ def sanitize_filename(title):
     return clean_name
 
 def save_as_markdown(page, date_str):
+    if len(date_str) > 10:
+        date_str = date_str[:10]
+        
     page_id = page['id']
     try:
         title = page['properties'][NOTION_PROPERTY_TITLE]['title'][0]['text']['content']
