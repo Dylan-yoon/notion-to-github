@@ -27,11 +27,16 @@ Notion 데이터베이스에 작성한 글을 매일 자동으로 GitHub 리포�
 `Settings` > `Actions` > `General` > `Workflow permissions` 에서:
 - ✅ **Read and write permissions** 선택 후 Save.
 
-### 5. 적용 확인
+### 5. GitHub Actions 활성화 (⚠️ 중요)
+Fork한 저장소는 기본적으로 자동화(Actions)가 비활성화되어 있습니다.
+- 상단의 `Actions` 탭으로 이동하여 **"I understand my workflows, go ahead and enable them"** 버튼을 누릅니다.
+- 왼쪽 메뉴에서 `Update Notion Log`를 클릭하고, 상단에 뜨는 경고 메시지 우측의 **"Enable workflow"** 버튼을 눌러 스케줄러를 켜주세요.
+- 👉 **[자세한 활성화 방법은 Wiki를 참고해주세요.](https://github.com/Dylan-yoon/notion-to-github/wiki/%E2%9A%99%EF%B8%8F-Fork%ED%95%9C-%EC%A0%80%EC%9E%A5%EC%86%8C%EC%97%90%EC%84%9C-GitHub-Actions-%ED%99%9C%EC%84%B1%ED%99%94%ED%95%98%EA%B8%B0)**
+
+### 6. 적용 확인
 `Actions` 탭에서 워크플로우를 수동 실행(`Run workflow`) 해보거나, 다음날 자동 실행을 기다립니다.
 
-
-### 6. 비고
+### 7. 비고
 추가로 시간 셋팅을 위한 GUIDE Docs
 [🕒 시간 설정 가이드 보러가기](./docs/TIME_SETTING_GUIDE.md) 에서 확인하시길 바랍니다.
 
